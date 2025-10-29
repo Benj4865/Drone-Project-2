@@ -11,10 +11,8 @@ pygame.display.set_caption("Simulation_Debug")
 detection_rate = 0.9
 
 # Position declarations
-last_known_position = (0,0)
 person_position = (0,0)
 drone_position = (0,0)
-drone_base = (0,0)
 
 
 # This function simulates "crappy" data from sensors or camera
@@ -29,7 +27,10 @@ def Drift_calc():
 def Lawnmower_pattern():
     pass
 
+def Drone_movement(current_pos, vel, heading):
+    pass
 
+def Calc_start_pos():
 
 
 running = True
