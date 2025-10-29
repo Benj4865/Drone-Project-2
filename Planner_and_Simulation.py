@@ -1,26 +1,12 @@
 import pygame
 import sys
 
-# Initialize pygame
-pygame.init()
-# Creating the windown/screewherein the simulation will be rendered
-screen = pygame.display.set_mode((1000,1000))
-pygame.display.set_caption("Simulation_Debug")
-
-#Global Parameters
-detection_rate = 0.9
-
-# Position declarations
-person_position = (0,0)
-drone_position = (0,0)
-
-
 # This function simulates "crappy" data from sensors or camera
 def Data_integrity_disturber():
     pass
 
 # Function to calculate drift. Isolated for easy changing or later expansion
-def Drift_calc():
+def Drift_calc(person_position):
     pass
 
 
@@ -31,6 +17,17 @@ def Drone_movement(current_pos, vel, heading):
     pass
 
 def Calc_start_pos():
+    pass
+
+# Initialize pygame
+pygame.init()
+# Creating the windown/screewherein the simulation will be rendered
+screen = pygame.display.set_mode((1000,1000))
+pygame.display.set_caption("Simulation_Debug")
+
+# Route Planner SETUP
+    # 1. Calculate search location from launch parameters
+
 
 
 running = True

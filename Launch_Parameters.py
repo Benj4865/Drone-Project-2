@@ -11,8 +11,10 @@ time_since_contact = 0
 drone_base = (0,0)
 
 # To give the drone an idea about what way the person could be drifting.
-esitmated_drift_velocity = 0
+estimated_drift_velocity = 0
 estimated_drift_bearing = 0
+
+person_start_position = (0,0)
 
 
 

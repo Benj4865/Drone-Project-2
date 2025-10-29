@@ -5,4 +5,6 @@ class Drone:
     velocity = 0
     bearing = 0
     altitude = 0
+    position = (0,0)
     flight_time = 0
+    battery_left = 100
