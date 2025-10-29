@@ -5,8 +5,22 @@ import sys
 pygame.init()
 
 # Creating the windown/screewherein the simulation will be rendered
-screen = pygame.display.set_mode((800,800))
+screen = pygame.display.set_mode((1000,1000))
 pygame.display.set_caption("Simulation_Debug")
+
+
+# Position declaration
+last_known_position = (0,0)
+person_position = (0,0)
+drone_position = (0,0)
+drone_base = (0,0)
+
+
+# Function to calculate drift. Isolated for easy changing or later expansion
+def Drift_calc():
+    pass
+
+
 
 
 
