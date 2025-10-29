@@ -1,0 +1,8 @@
+# This program is to simulate the drone controller, so it can be isolated from the simulation
+# and it can be used for later implementation in a real drone.
+
+class Drone:
+    velocity = 0
+    bearing = 0
+    altitude = 0
+    flight_time = 0
