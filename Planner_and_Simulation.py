@@ -40,33 +40,39 @@ def Drone_movement( current_pos, target, heading, ):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance_m = R * c
 
+    # Checking if distance to target is higher than speed in m.
+    if distance_m >= 10:
+        new_drone_pos = Calc_pos(current_pos, bearing_deg, 10)
+
+    # if distance is less than speed, set posistion to target
+    else:
+        new_drone_pos = target
 
 
 
-def Calc_start_pos():
+def Calc_pos(pos, bearing, distance):
 
     # Haversine Function Setup
 
     R = 6371000 #Radius of the Earth
     # Calculation from previous project, modified using ChatGPT (Next 6 lines)
-    lat_rad = math.radians(Launch_Parameters.last_known_position[0])
-    long_rad = math.radians(Launch_Parameters.last_known_position[1])
-    bearing_rad = math.radians(Launch_Parameters.estimated_drift_bearing)
-    distance_floated = Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact
+    lat_rad = math.radians(pos[0])
+    long_rad = math.radians(pos[1])
+    bearing_rad = math.radians(bearing)
 
-    new_lat_rad = math.asin(math.sin(lat_rad) * math.cos(distance_floated / R) + math.cos(lat_rad) * math.sin(distance_floated / R) * math.cos(bearing_rad))
+    new_lat_rad = math.asin(math.sin(lat_rad) * math.cos(distance / R) + math.cos(lat_rad) * math.sin(distance / R) * math.cos(bearing_rad))
 
     new_long_rad = long_rad + math.atan2(
-        math.sin(bearing_rad) * math.sin(distance_floated / R) * math.cos(lat_rad),
-        math.cos(distance_floated / R) - math.sin(lat_rad) * math.sin(new_lat_rad)
+        math.sin(bearing_rad) * math.sin(distance / R) * math.cos(lat_rad),
+        math.cos(distance / R) - math.sin(lat_rad) * math.sin(new_lat_rad)
     )
 
     new_lat = math.degrees(new_lat_rad)
     new_long = math.degrees(new_long_rad)
 
-    estimated_starting_posistion = (new_lat,new_long)
+    new_position = (new_lat,new_long)
 
-    return estimated_starting_posistion
+    return new_position
 
 
 
@@ -79,7 +85,7 @@ pygame.display.set_caption("Simulation_Debug")
 # Route Planner SETUP
     # 1. Calculate search location from launch parameters
 
-starting_pos = Calc_start_pos()
+starting_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
 
 running = True
 
