@@ -16,5 +16,7 @@ estimated_drift_bearing = 43.5
 
 person_start_position = (0,0)
 
+drone_cruise_speed = 10
+
 
 

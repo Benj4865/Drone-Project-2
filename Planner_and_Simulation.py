@@ -1,3 +1,6 @@
+# Last Known Posistion is the last posistion the person was spotted at
+# The Search Datum is the esitmated posistion of the person corrected for drift
+
 import math
 import pygame
 import Drone_Controller
@@ -14,8 +17,14 @@ def Data_integrity_disturber():
 def Drift_calc(person_position):
     pass
 
-def Lawnmower_pattern():
-    pass
+def Expanding_Square_pattern():
+    # Sets the size of the value d in Expanding Square Searches
+    d = 20
+    counter = 1
+    starting_bearing = Launch_Parameters.estimated_drift_bearing
+    current_pos =
+    #next_pos = Calc_pos()
+
 
 def Drone_movement( current_pos, target):
 
@@ -41,8 +50,8 @@ def Drone_movement( current_pos, target):
     distance_m = R * c
 
     # Checking if distance to target is higher than speed in m.
-    if distance_m >= 10:
-        new_drone_pos = Calc_pos(current_pos, bearing_deg, 10)
+    if distance_m >= Launch_Parameters.drone_cruise_speed:
+        new_drone_pos = Calc_pos(current_pos, bearing_deg, Launch_Parameters.drone_cruise_speed)
 
     # if distance is less than speed, set posistion to target
     else:
@@ -91,9 +100,12 @@ pygame.display.set_caption("Simulation_Debug")
 drone =  Drone_Controller.Drone_Controller()
 drone.position = (55.702499,12.571936)
 
-starting_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
+# Target_pos is the Search Datum the first time it runs.
+target_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
 
 running = True
+# Keeps track of where in the search pattern the drone is
+search_pattern_step = 0
 
 while running:
     for event in pygame.event.get():
@@ -103,7 +115,13 @@ while running:
     # Creating a dark blue background
     screen.fill((0,0,80))
 
-    drone_new_pos = Drone_movement(drone.position, starting_pos)
+    drone_new_pos = Drone_movement(drone.position, target_pos)
+    if drone_new_pos == drone.position:
+        # At target
+        # Increments the counter, keeping track of progress in pattern
+        search_pattern_step += 1
+
+
     drone.position = drone_new_pos
 
 
