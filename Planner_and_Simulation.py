@@ -2,6 +2,8 @@
 # The Search Datum is the esitmated posistion of the person corrected for drift
 
 import math
+from xmlrpc.client import DateTime
+
 import pygame
 import Drone_Controller
 
@@ -17,13 +19,44 @@ def Data_integrity_disturber():
 def Drift_calc(person_position):
     pass
 
-def Expanding_Square_pattern():
+def Expanding_Square_pattern(datum):
     # Sets the size of the value d in Expanding Square Searches
     d = 20
+
+    #Keeps track of the d_value currently in use
+    current_d = d
+
+    #Counts the amount of legs calculated so far
     counter = 1
-    starting_bearing = Launch_Parameters.estimated_drift_bearing
-    current_pos =
-    #next_pos = Calc_pos()
+
+    #Getting initial bearing from drift estimation
+    current_bearing = Launch_Parameters.estimated_drift_bearing
+
+    current_pos = datum
+
+    # List for storing point in search pattern
+    waypoints = []
+
+    while counter < 40:
+
+        #Calculating the next position to go to
+        next_pos = Calc_pos(current_pos,current_bearing, current_d)
+        waypoints.append(next_pos)
+        current_pos = next_pos
+
+        # calculating the new bearing for the next leg of the square
+        if  current_bearing > 90:
+            current_bearing -= 90
+        else:
+            current_bearing = 360 + (current_bearing - 90)
+
+        if counter % 2 == 0:
+            current_d += d
+
+        counter += 1
+
+    return waypoints
+
 
 
 def Drone_movement( current_pos, target):
@@ -103,6 +136,8 @@ drone.position = (55.702499,12.571936)
 # Target_pos is the Search Datum the first time it runs.
 target_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
 
+waypoints = Expanding_Square_pattern(target_pos)
+
 running = True
 # Keeps track of where in the search pattern the drone is
 search_pattern_step = 0
@@ -117,7 +152,9 @@ while running:
 
     drone_new_pos = Drone_movement(drone.position, target_pos)
     if drone_new_pos == drone.position:
-        # At target
+        # Updating target position
+        target_pos = waypoints[search_pattern_step]
+
         # Increments the counter, keeping track of progress in pattern
         search_pattern_step += 1
 
