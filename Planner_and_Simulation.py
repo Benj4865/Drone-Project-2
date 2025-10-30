@@ -1,6 +1,6 @@
 import math
 import pygame
-
+import Drone_Controller
 
 
 import Launch_Parameters
@@ -17,7 +17,7 @@ def Drift_calc(person_position):
 def Lawnmower_pattern():
     pass
 
-def Drone_movement( current_pos, target, heading, ):
+def Drone_movement( current_pos, target):
 
     # Math done by ChatGPT
     cur_lat_rad, cur_long_rad = math.radians(current_pos[0]), math.radians(current_pos[1])
@@ -47,6 +47,8 @@ def Drone_movement( current_pos, target, heading, ):
     # if distance is less than speed, set posistion to target
     else:
         new_drone_pos = target
+
+    return new_drone_pos
 
 
 
@@ -79,11 +81,15 @@ def Calc_pos(pos, bearing, distance):
 # Initialize pygame
 pygame.init()
 # Creating the windown/screewherein the simulation will be rendered
-screen = pygame.display.set_mode((1000,1000))
+screen = pygame.display.set_mode((1920,1080))
 pygame.display.set_caption("Simulation_Debug")
 
 # Route Planner SETUP
     # 1. Calculate search location from launch parameters
+
+# Creating Drone object
+drone =  Drone_Controller.Drone_Controller()
+drone.position = (55.702499,12.571936)
 
 starting_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
 
@@ -96,6 +102,10 @@ while running:
 
     # Creating a dark blue background
     screen.fill((0,0,80))
+
+    drone_new_pos = Drone_movement(drone.position, starting_pos)
+    drone.position = drone_new_pos
+
 
 
     # Updates the full Surface to the screen object
