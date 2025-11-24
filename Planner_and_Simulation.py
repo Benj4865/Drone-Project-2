@@ -17,6 +17,9 @@ def Data_integrity_disturber():
 
 # Function to calculate drift. Isolated for easy changing or later expansion
 def Drift_calc(person_position):
+    #Person Posistion is in GPS coordinates
+
+    #Return new position
     pass
 
 def Expanding_Square_pattern(datum):
