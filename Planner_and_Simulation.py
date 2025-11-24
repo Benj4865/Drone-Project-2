@@ -161,12 +161,7 @@ while running:
         # Increments the counter, keeping track of progress in pattern
         search_pattern_step += 1
 
-
     drone.position = drone_new_pos
-
-
 
     # Updates the full Surface to the screen object
     pygame.display.flip()
-
-
