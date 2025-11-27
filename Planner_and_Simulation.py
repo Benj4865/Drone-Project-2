@@ -1,13 +1,10 @@
 # Last Known Posistion is the last posistion the person was spotted at
 # The Search Datum is the esitmated posistion of the person corrected for drift
-# Test
+
 import math
-from xmlrpc.client import DateTime
 
 import pygame
 import Drone_Controller
-
-
 import Launch_Parameters
 
 
@@ -60,13 +57,11 @@ def Expanding_Square_pattern(datum):
 
     return waypoints
 
-
-
-def Drone_movement( current_pos, target):
+def Calc_dist_to_point(current_pos, target_pos):
 
     # Math done by ChatGPT
     cur_lat_rad, cur_long_rad = math.radians(current_pos[0]), math.radians(current_pos[1])
-    target_lat_rad, target_long_rad = math.radians(target[0]), math.radians(target[1])
+    target_lat_rad, target_long_rad = math.radians(target_pos[0]), math.radians(target_pos[1])
 
     # Differences
     dlon = target_long_rad - cur_long_rad
@@ -85,13 +80,40 @@ def Drone_movement( current_pos, target):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance_m = R * c
 
+    return distance_m
+
+
+def Drone_movement(current_pos, target_pos):
+
+    # Math done by ChatGPT
+    cur_lat_rad, cur_long_rad = math.radians(current_pos[0]), math.radians(current_pos[1])
+    target_lat_rad, target_long_rad = math.radians(target_pos[0]), math.radians(target_pos[1])
+
+    # Differences
+    dlon = target_long_rad - cur_long_rad
+
+    # Bearing calculation
+    x = math.sin(dlon) * math.cos(target_lat_rad)
+    y = math.cos(cur_lat_rad) * math.sin(target_lat_rad) - \
+        math.sin(cur_lat_rad) * math.cos(target_lat_rad) * math.cos(dlon)
+    bearing_rad = math.atan2(x, y)
+    bearing_deg = (math.degrees(bearing_rad) + 360) % 360  # Normalize to 0–360°
+
+    # Distance using the haversine formula
+    R = 6371000  # Earth radius in meters
+    dlat = target_lat_rad - cur_lat_rad
+    a = math.sin(dlat/2)**2 + math.cos(cur_lat_rad) * math.cos(target_lat_rad) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    distance_m = R * c
+
+
     # Checking if distance to target is higher than speed in m.
     if distance_m >= Launch_Parameters.drone_cruise_speed:
         new_drone_pos = Calc_pos(current_pos, bearing_deg, Launch_Parameters.drone_cruise_speed)
 
     # if distance is less than speed, set posistion to target
     else:
-        new_drone_pos = target
+        new_drone_pos = target_pos
 
     return new_drone_pos
 
@@ -121,11 +143,9 @@ def Calc_pos(pos, bearing, distance):
 
     return new_position
 
-
-
 # Initialize pygame
 pygame.init()
-# Creating the windown/screewherein the simulation will be rendered
+# Creating the windown/screen wherein the simulation will be rendered
 screen = pygame.display.set_mode((1920,1080))
 pygame.display.set_caption("Simulation_Debug")
 
@@ -134,10 +154,14 @@ pygame.display.set_caption("Simulation_Debug")
 
 # Creating Drone object
 drone =  Drone_Controller.Drone_Controller()
-drone.position = (55.702499,12.571936)
+drone.drone_base = (55.702499,12.571936)
+drone.position = drone.drone_base
 
 # Target_pos is the Search Datum the first time it runs.
 target_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
+
+# Creating a variable to save the last "completed" waypoint for later calculation
+prev_waypoint = drone.position
 
 waypoints = Expanding_Square_pattern(target_pos)
 
@@ -145,23 +169,42 @@ running = True
 # Keeps track of where in the search pattern the drone is
 search_pattern_step = 0
 
+
 while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    #for event in pygame.event.get():
+    #    if event.type == pygame.QUIT:
+    #        running = False
 
     # Creating a dark blue background
-    screen.fill((0,0,80))
+    #screen.fill((0,0,80))
 
     drone_new_pos = Drone_movement(drone.position, target_pos)
+
     if drone_new_pos == drone.position:
+        #Calculating time/distance flown in last leg of pattern
+        last_leg_dist = Calc_dist_to_point(drone.position, prev_waypoint)
+        last_leg_time = (last_leg_dist / Launch_Parameters.drone_cruise_speed) + 2 # +2 to add an acceleration "slowdown" and "speedup" for changing directions
+
+        # updating drone time and dist flown
+        drone.distance_flown += last_leg_dist
+        drone.flight_time += last_leg_time
+
+        #Updating previous waypoint to current position
+        prev_waypoint = drone.position
         # Updating target position
         target_pos = waypoints[search_pattern_step]
 
         # Increments the counter, keeping track of progress in pattern
         search_pattern_step += 1
+        if search_pattern_step >= len(waypoints):
+            break
 
     drone.position = drone_new_pos
 
     # Updates the full Surface to the screen object
-    pygame.display.flip()
+    #pygame.display.flip()
+
+
+print(drone.flight_time)
+print(drone.distance_flown)
+
