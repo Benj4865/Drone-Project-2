@@ -4,20 +4,62 @@
 import math
 from xmlrpc.client import DateTime
 
+#For API
+import requests
+
 import pygame
 import Drone_Controller
 
 
 import Launch_Parameters
+from Launch_Parameters import person_start_position
 
 
 # This function simulates "crappy" data from sensors or camera
 def Data_integrity_disturber():
     pass
 
+
+
+def api_direction():
+    url = "https://dmi.cma.dk/api/weather/current/copenhagen"
+    data = requests.get(url).json()
+
+    # Safe extraction
+    wind_speed = data.get("wind", {}).get("speed", 0)
+    wind_dir   = data.get("wind", {}).get("direction", 0)
+
+    # Convert to X/Y vector
+    wind_dx = wind_speed * math.sin(math.radians(wind_dir))
+    wind_dy = wind_speed * math.cos(math.radians(wind_dir))
+
+    # Compute effective bearing
+    effective_bearing = (math.degrees(math.atan2(wind_dx, wind_dy)) + 360) % 360
+    return effective_bearing
+
+# Example usage
+bearing = api_direction("https://dmi.cma.dk/api/weather/current/copenhagen")
+print(f"Move in direction: {bearing:.2f}°")
+
+
 # Function to calculate drift. Isolated for easy changing or later expansion
+
+
 def Drift_calc(person_position):
     #Person Posistion is in GPS coordinates
+    person_start_position = person_position
+
+
+
+    #feaching api
+    #api_wind =
+    #api_currents =
+
+
+
+    #person_position (then get wind direction and ocean currents and create a direction
+
+
 
     #Return new position
     pass
@@ -136,6 +178,7 @@ pygame.display.set_caption("Simulation_Debug")
 drone =  Drone_Controller.Drone_Controller()
 drone.position = (55.702499,12.571936)
 
+
 # Target_pos is the Search Datum the first time it runs.
 target_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
 
@@ -152,6 +195,7 @@ while running:
 
     # Creating a dark blue background
     screen.fill((0,0,80))
+
 
     drone_new_pos = Drone_movement(drone.position, target_pos)
     if drone_new_pos == drone.position:
