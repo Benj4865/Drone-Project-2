@@ -18,10 +18,12 @@ def calc_intersec(beach_polygon, leg):
     elif beach.contains(start_point) == True and beach.contains(end_point) == False:
         int_sec_index = 1
         leg.is_active = True
+        leg.intersect_dir = 1
 
     elif beach.contains(start_point) == False and beach.contains(end_point) == True:
         int_sec_index = 0
         leg.is_active = True
+        leg.intersect_dir = -1
 
     else:
         leg.is_active = False

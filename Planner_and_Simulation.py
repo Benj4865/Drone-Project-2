@@ -180,6 +180,77 @@ for leg in search_legs:
     modified_search_leg = intersect_Calculator.calc_intersec(Launch_Parameters.beach_plygon, leg)
     modified_search_legs.append(modified_search_leg)
 
+unprocessed_indexes = []
+for i in range(len(modified_search_legs)):
+    if modified_search_legs[i].is_active == True:
+        unprocessed_indexes.append(i)
+
+flight_path = []
+current_leg_index = 0
+
+# Can be 1 or -1, an is used to determine the derection of flight in the pattern
+path_direction = 1
+
+while True:
+
+    if len(unprocessed_indexes) == 0:
+        break
+
+    current_leg = modified_search_legs[current_leg_index]
+
+    if current_leg.is_active and current_leg.intersect_point == None:
+        if path_direction == 1:
+            flight_path.append(current_leg.end_pos)
+        else:
+            flight_path.append(current_leg.start_pos)
+
+        unprocessed_indexes.remove(current_leg_index)
+        current_leg_index += path_direction
+
+    elif current_leg.is_active and current_leg.intersect_point is not None:
+
+        flight_path.append(current_leg.intersect_point)
+        unprocessed_indexes.remove(current_leg_index)
+
+        if len(unprocessed_indexes) == 0:
+            break
+
+        next_leg_index = current_leg_index + path_direction
+        next_leg = modified_search_legs[next_leg_index]
+
+        if next_leg.is_active == False:
+
+            if (next_leg_index) in unprocessed_indexes:
+                unprocessed_indexes.remove(next_leg_index)
+
+            current_leg_index += 4
+
+            if current_leg_index >= len(modified_search_legs):
+                current_leg_index = len(modified_search_legs) - 1
+
+                flight_path.append(modified_search_legs[current_leg_index].end_pos)
+
+            path_direction *= -1
+
+        else:
+            if  next_leg.intersect_point is None:
+                if path_direction == 1:
+                    flight_path.append(current_leg.end_pos)
+                else:
+                    flight_path.append(current_leg.start_pos)
+
+            current_leg_index += path_direction
+
+flight_path.insert(0, drone.drone_base)
+flight_path.insert(1, target_pos)
+flight_path.append(drone.drone_base)
+
+
+list_converter.save_kml(flight_path, "C:\\users\\bena3\\downloads\\FlightPath_.kml", "FP")
+
+
+
+
 
 running = True
 # Keeps track of where in the search pattern the drone is
