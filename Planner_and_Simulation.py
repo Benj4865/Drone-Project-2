@@ -3,9 +3,11 @@
 
 import math
 
-import pygame
 import Drone_Controller
 import Launch_Parameters
+import list_converter
+import search_leg
+import intersect_Calculator
 
 
 # This function simulates "crappy" data from sensors or camera
@@ -35,13 +37,19 @@ def Expanding_Square_pattern(datum):
     current_pos = datum
 
     # List for storing point in search pattern
-    waypoints = []
+    search_legs = []
 
     while counter < 40:
 
         #Calculating the next position to go to
         next_pos = Calc_pos(current_pos,current_bearing, current_d)
-        waypoints.append(next_pos)
+
+        new_leg = search_leg.Search_leg()
+        new_leg.start_pos = current_pos
+        new_leg.end_pos = next_pos
+        new_leg.is_active = True
+
+        search_legs.append(new_leg)
         current_pos = next_pos
 
         # calculating the new bearing for the next leg of the square
@@ -55,7 +63,7 @@ def Expanding_Square_pattern(datum):
 
         counter += 1
 
-    return waypoints
+    return search_legs
 
 def Calc_dist_to_point(current_pos, target_pos):
 
@@ -143,27 +151,35 @@ def Calc_pos(pos, bearing, distance):
 
     return new_position
 
-# Initialize pygame
-pygame.init()
-# Creating the windown/screen wherein the simulation will be rendered
-screen = pygame.display.set_mode((1920,1080))
-pygame.display.set_caption("Simulation_Debug")
-
 # Route Planner SETUP
     # 1. Calculate search location from launch parameters
 
 # Creating Drone object
 drone =  Drone_Controller.Drone_Controller()
-drone.drone_base = (55.702499,12.571936)
+drone.drone_base = (55.607124, 12.393114)
 drone.position = drone.drone_base
 
 # Target_pos is the Search Datum the first time it runs.
 target_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
 
+#leg = search_leg.Search_leg()
+#leg.start_pos = target_pos
+#leg.end_pos = drone.drone_base
+#beach = Launch_Parameters.beach_plygon
+#leg = intersect_Calculator.calc_intersec(beach, leg)
+
+
 # Creating a variable to save the last "completed" waypoint for later calculation
 prev_waypoint = drone.position
 
-waypoints = Expanding_Square_pattern(target_pos)
+search_legs = Expanding_Square_pattern(target_pos)
+
+modified_search_legs = []
+
+for leg in search_legs:
+    modified_search_leg = intersect_Calculator.calc_intersec(Launch_Parameters.beach_plygon, leg)
+    modified_search_legs.append(modified_search_leg)
+
 
 running = True
 # Keeps track of where in the search pattern the drone is
@@ -171,12 +187,7 @@ search_pattern_step = 0
 
 
 while running:
-    #for event in pygame.event.get():
-    #    if event.type == pygame.QUIT:
-    #        running = False
 
-    # Creating a dark blue background
-    #screen.fill((0,0,80))
 
     drone_new_pos = Drone_movement(drone.position, target_pos)
 
@@ -192,19 +203,23 @@ while running:
         #Updating previous waypoint to current position
         prev_waypoint = drone.position
         # Updating target position
-        target_pos = waypoints[search_pattern_step]
+        leg = search_legs[search_pattern_step]
+        target_pos = leg.end_pos
 
         # Increments the counter, keeping track of progress in pattern
         search_pattern_step += 1
-        if search_pattern_step >= len(waypoints):
+        if search_pattern_step >= len(search_legs):
+
             break
 
     drone.position = drone_new_pos
 
-    # Updates the full Surface to the screen object
-    #pygame.display.flip()
-
 
 print(drone.flight_time)
 print(drone.distance_flown)
+
+list_converter.save_kml(search_legs, "C:\\users\\bena3\\downloads\\ESPattern_2.kml", "ESPattern")
+
+#for point in waypoints:
+#    print("(" + str(point[0]) + ", " + str(point[1]) + "),")
 
