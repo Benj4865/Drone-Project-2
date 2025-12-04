@@ -8,6 +8,8 @@ from xmlrpc.client import DateTime
 import requests
 
 import pygame
+from urllib3.util import url
+
 import Drone_Controller
 
 
@@ -21,33 +23,42 @@ def Data_integrity_disturber():
 
 
 
-def api_direction():
-    url = "https://dmi.cma.dk/api/weather/current/copenhagen"
-    data = requests.get(url).json()
+def api_wind_vector(url):
+    try:
+        data = requests.get(url).json()
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch or parse API data: {e}")
 
-    # Safe extraction
-    wind_speed = data.get("wind", {}).get("speed", 0)
-    wind_dir   = data.get("wind", {}).get("direction", 0)
+    # The API puts weather values inside forecast[0]
+    forecast = data.get("forecast", [{}])[0]
 
-    # Convert to X/Y vector
-    wind_dx = wind_speed * math.sin(math.radians(wind_dir))
-    wind_dy = wind_speed * math.cos(math.radians(wind_dir))
+    wind_speed = forecast.get("wind_speed", 0)
+    wind_dir   = forecast.get("wind_direction", 0)
 
-    # Compute effective bearing
-    effective_bearing = (math.degrees(math.atan2(wind_dx, wind_dy)) + 360) % 360
-    return effective_bearing
+    print("wind_dir:", wind_dir, "wind_speed:", wind_speed)
+
+    # Convert direction + speed into X/Y movement
+    dx = wind_speed * math.sin(math.radians(wind_dir))
+    dy = wind_speed * math.cos(math.radians(wind_dir))
+
+    return dx, dy, wind_speed, wind_dir
+
 
 # Example usage
-bearing = api_direction("https://dmi.cma.dk/api/weather/current/copenhagen")
-print(f"Move in direction: {bearing:.2f}°")
+dx, dy, speed, direction = api_wind_vector(
+    "https://dmi.cma.dk/api/weather/forecast/Ish%C3%B8j?hours=1"
+)
 
+print(f"Direction: {direction:.2f}°")
+print(f"Speed: {speed:.2f} m/s")
+print(f"Move object: dx={dx:.3f}, dy={dy:.3f}")
 
 # Function to calculate drift. Isolated for easy changing or later expansion
 
 
 def Drift_calc(person_position):
     #Person Posistion is in GPS coordinates
-    person_start_position = person_position
+    person_start_position
 
 
 
