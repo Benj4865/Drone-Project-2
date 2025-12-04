@@ -3,7 +3,7 @@
 #Global Parameters
 detection_rate = 0.9
 takeoff_time = 10
-
+drone_FOV = 20
 
 # Position declarations
 last_known_position = (55.604792, 12.394959)
@@ -11,12 +11,15 @@ time_since_contact = 0
 
 # To give the drone an idea about what way the person could be drifting.
 estimated_drift_velocity = 1
-estimated_drift_bearing = 245
+estimated_drift_bearing = 255
 #estimated_drift_bearing = 180
 
 person_start_position = (0,0)
 
 drone_cruise_speed = 10
+
+expanding_square_count = 40
+sweep_angle = 45
 
 beach_plygon =[
     (55.6063174018631, 12.39904497621255),
@@ -31,6 +34,7 @@ beach_plygon =[
     (55.60786091329714, 12.39885605154945),
     (55.6063174018631,  12.39904497621255)
 ]
+
 
 
 

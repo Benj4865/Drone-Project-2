@@ -10,10 +10,6 @@ import search_leg
 import intersect_Calculator
 
 
-# This function simulates "crappy" data from sensors or camera
-def Data_integrity_disturber():
-    pass
-
 # Function to calculate drift. Isolated for easy changing or later expansion
 def Drift_calc(person_position):
     #Person Posistion is in GPS coordinates
@@ -23,7 +19,7 @@ def Drift_calc(person_position):
 
 def Expanding_Square_pattern(datum):
     # Sets the size of the value d in Expanding Square Searches
-    d = 20
+    d = Launch_Parameters.drone_FOV
 
     #Keeps track of the d_value currently in use
     current_d = d
@@ -39,7 +35,7 @@ def Expanding_Square_pattern(datum):
     # List for storing point in search pattern
     search_legs = []
 
-    while counter < 40:
+    while counter < Launch_Parameters.expanding_square_count:
 
         #Calculating the next position to go to
         next_pos = Calc_pos(current_pos,current_bearing, current_d)
@@ -65,6 +61,85 @@ def Expanding_Square_pattern(datum):
 
     return search_legs
 
+def select_route_expanding_square(search_legs, target_pos, drone):
+
+    modified_search_legs = []
+
+    for leg in search_legs:
+        modified_search_leg = intersect_Calculator.calc_intersec(Launch_Parameters.beach_plygon, leg)
+        modified_search_legs.append(modified_search_leg)
+
+    unprocessed_indexes = []
+
+    for i in range(len(modified_search_legs)):
+        if modified_search_legs[i].is_active == True:
+            unprocessed_indexes.append(i)
+
+    flight_path = []
+    current_leg_index = 0
+
+    # Can be 1 or -1, an is used to determine the derection of flight in the pattern
+    path_direction = 1
+
+    while True:
+
+        if len(unprocessed_indexes) == 0:
+            break
+
+        current_leg = modified_search_legs[current_leg_index]
+
+        if current_leg.is_active and current_leg.intersect_point == None:
+            if path_direction == 1:
+                flight_path.append(current_leg.end_pos)
+            else:
+                flight_path.append(current_leg.start_pos)
+
+            unprocessed_indexes.remove(current_leg_index)
+            current_leg_index += path_direction
+
+        elif current_leg.is_active and current_leg.intersect_point is not None:
+
+            flight_path.append(current_leg.intersect_point)
+            unprocessed_indexes.remove(current_leg_index)
+
+            if len(unprocessed_indexes) == 0:
+                break
+
+            next_leg_index = current_leg_index + path_direction
+            next_leg = modified_search_legs[next_leg_index]
+
+            if next_leg.is_active == False:
+
+                if (next_leg_index) in unprocessed_indexes:
+                    unprocessed_indexes.remove(next_leg_index)
+
+                current_leg_index += 4
+
+                if current_leg_index >= len(modified_search_legs):
+                    current_leg_index = len(modified_search_legs) - 1
+
+                    flight_path.append(modified_search_legs[current_leg_index].end_pos)
+
+                path_direction *= -1
+
+            else:
+                if  next_leg.intersect_point is None:
+                    if path_direction == 1:
+                        flight_path.append(current_leg.end_pos)
+                    else:
+                        flight_path.append(current_leg.start_pos)
+
+                current_leg_index += path_direction
+
+    flight_path.insert(0, drone.drone_base)
+    flight_path.insert(1, target_pos)
+    flight_path.append(drone.drone_base)
+
+
+    list_converter.save_kml(flight_path, "C:\\users\\bena3\\downloads\\FlightPath_.kml", "FP")
+
+    return flight_path
+
 def Calc_dist_to_point(current_pos, target_pos):
 
     # Math done by ChatGPT
@@ -89,7 +164,6 @@ def Calc_dist_to_point(current_pos, target_pos):
     distance_m = R * c
 
     return distance_m
-
 
 def Drone_movement(current_pos, target_pos):
 
@@ -124,8 +198,6 @@ def Drone_movement(current_pos, target_pos):
         new_drone_pos = target_pos
 
     return new_drone_pos
-
-
 
 def Calc_pos(pos, bearing, distance):
 
@@ -162,103 +234,54 @@ drone.position = drone.drone_base
 # Target_pos is the Search Datum the first time it runs.
 target_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
 
-#leg = search_leg.Search_leg()
-#leg.start_pos = target_pos
-#leg.end_pos = drone.drone_base
-#beach = Launch_Parameters.beach_plygon
-#leg = intersect_Calculator.calc_intersec(beach, leg)
+#def Fan_out_pattern:
 
+datum = Calc_pos(target_pos, Launch_Parameters.estimated_drift_bearing - 180, Launch_Parameters.drone_FOV * 3)
+
+flight_path = []
+
+sweep_angle = Launch_Parameters.sweep_angle
+
+flight_path.append(datum)
+angle_rad = math.radians(sweep_angle/2)
+dist_to_point = (math.sin(angle_rad) * Launch_Parameters.drone_FOV) / math.sin((math.pi / 2) - angle_rad)
+
+for i in range(1,30):
+    mid_point = Calc_pos(datum, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.drone_FOV * i)
+
+    left_point = Calc_pos(mid_point, Launch_Parameters.estimated_drift_bearing - 90, dist_to_point * i)
+    intersect_point = intersect_Calculator.calc_intersect_from_pos(mid_point, left_point, Launch_Parameters.beach_plygon)
+    if intersect_point is not None:
+        left_point = intersect_point
+
+    right_point = Calc_pos(mid_point, Launch_Parameters.estimated_drift_bearing + 90, dist_to_point * i)
+    intersect_point = intersect_Calculator.calc_intersect_from_pos(mid_point, right_point, Launch_Parameters.beach_plygon)
+    if intersect_point is not None:
+        right_point = intersect_point
+
+    if i%2 == 0:
+        flight_path.append(right_point)
+        flight_path.append(left_point)
+    else:
+        flight_path.append(left_point)
+        flight_path.append(right_point)
+
+
+list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Sweep.kml", "sweep")
 
 # Creating a variable to save the last "completed" waypoint for later calculation
 prev_waypoint = drone.position
 
 search_legs = Expanding_Square_pattern(target_pos)
 
-modified_search_legs = []
-
-for leg in search_legs:
-    modified_search_leg = intersect_Calculator.calc_intersec(Launch_Parameters.beach_plygon, leg)
-    modified_search_legs.append(modified_search_leg)
-
-unprocessed_indexes = []
-for i in range(len(modified_search_legs)):
-    if modified_search_legs[i].is_active == True:
-        unprocessed_indexes.append(i)
-
-flight_path = []
-current_leg_index = 0
-
-# Can be 1 or -1, an is used to determine the derection of flight in the pattern
-path_direction = 1
-
-while True:
-
-    if len(unprocessed_indexes) == 0:
-        break
-
-    current_leg = modified_search_legs[current_leg_index]
-
-    if current_leg.is_active and current_leg.intersect_point == None:
-        if path_direction == 1:
-            flight_path.append(current_leg.end_pos)
-        else:
-            flight_path.append(current_leg.start_pos)
-
-        unprocessed_indexes.remove(current_leg_index)
-        current_leg_index += path_direction
-
-    elif current_leg.is_active and current_leg.intersect_point is not None:
-
-        flight_path.append(current_leg.intersect_point)
-        unprocessed_indexes.remove(current_leg_index)
-
-        if len(unprocessed_indexes) == 0:
-            break
-
-        next_leg_index = current_leg_index + path_direction
-        next_leg = modified_search_legs[next_leg_index]
-
-        if next_leg.is_active == False:
-
-            if (next_leg_index) in unprocessed_indexes:
-                unprocessed_indexes.remove(next_leg_index)
-
-            current_leg_index += 4
-
-            if current_leg_index >= len(modified_search_legs):
-                current_leg_index = len(modified_search_legs) - 1
-
-                flight_path.append(modified_search_legs[current_leg_index].end_pos)
-
-            path_direction *= -1
-
-        else:
-            if  next_leg.intersect_point is None:
-                if path_direction == 1:
-                    flight_path.append(current_leg.end_pos)
-                else:
-                    flight_path.append(current_leg.start_pos)
-
-            current_leg_index += path_direction
-
-flight_path.insert(0, drone.drone_base)
-flight_path.insert(1, target_pos)
-flight_path.append(drone.drone_base)
-
-
-list_converter.save_kml(flight_path, "C:\\users\\bena3\\downloads\\FlightPath_.kml", "FP")
-
-
-
+flight_path = select_route_expanding_square(search_legs, target_pos, drone)
 
 
 running = True
 # Keeps track of where in the search pattern the drone is
 search_pattern_step = 0
 
-
 while running:
-
 
     drone_new_pos = Drone_movement(drone.position, target_pos)
 
@@ -289,7 +312,7 @@ while running:
 print(drone.flight_time)
 print(drone.distance_flown)
 
-list_converter.save_kml(search_legs, "C:\\users\\bena3\\downloads\\ESPattern_2.kml", "ESPattern")
+#list_converter.save_kml(search_legs, "C:\\users\\bena3\\downloads\\ESPattern_2.kml", "ESPattern")
 
 #for point in waypoints:
 #    print("(" + str(point[0]) + ", " + str(point[1]) + "),")

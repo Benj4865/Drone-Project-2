@@ -30,29 +30,16 @@ def calc_intersec(beach_polygon, leg):
         return leg
 
 
-
     leg_points = (start_point,end_point)
     line = LineString(leg_points)
     # Use Shapely to check for intersection
     inter = beach.intersection(line)
-
 
     if inter.is_empty:
         print("No intersection")
 
     else:
         print("Intersection geometry type:", inter.geom_type)
-
-        #if inter.geom_type == "Point":
-        #    # Single intersection point
-        #    print("Point:", inter.x, inter.y)
-        #   leg.intersect_point = (inter.x, inter.y)
-
-        #elif inter.geom_type == "MultiPoint":
-        #    # Several intersection points
-        #    for p in inter.geoms:
-        #        print("Point:", p.x, p.y)
-        #        leg.intersect_point = (p.x, p.y)
 
         if inter.geom_type in ("LineString", "MultiLineString"):
             # The line overlaps with polygon edge(s)
@@ -67,3 +54,28 @@ def calc_intersec(beach_polygon, leg):
             leg.intersect_point = coords[-1]
 
     return leg
+
+def calc_intersect_from_pos(pos_1, pos_2, polygon):
+    beach = Polygon(polygon)
+
+    # Example line segment (two points)
+    line_points = [pos_1, pos_2]
+    line = LineString(line_points)
+
+    # Intersection
+    inter = beach.intersection(line)
+
+    if inter.is_empty:
+        print("No intersection")
+        return None
+    else:
+        print("Intersection geometry type:", inter.geom_type)
+
+        if inter.geom_type in ("LineString", "MultiLineString"):
+            # The line overlaps with polygon edge(s)
+            # You can sample endpoints or points along it, for example:
+            for g in getattr(inter, "geoms", [inter]):
+                coords = list(g.coords)
+                print("Overlapping segment endpoints:", coords[0], "to", coords[-1])
+
+            return coords[0]
