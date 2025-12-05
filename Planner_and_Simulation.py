@@ -70,7 +70,7 @@ def drift_calc(person_position, wind_speed, wind_dir, dt_seconds):
 
     drift_direction = (wind_dir + 20) % 360   #leeway angle. Takes into acount that wind dose not push a person in one specific angle
 
-    #Convert speed+direction into movement vector
+    #Convert speed+direction into movement vectors
     dx = drift_speed * math.sin(math.radians(drift_direction)) * dt_seconds
     dy = drift_speed * math.cos(math.radians(drift_direction)) * dt_seconds
 
