@@ -56,24 +56,31 @@ print(f"Move object: dx={dx:.3f}, dy={dy:.3f}")
 # Function to calculate drift. Isolated for easy changing or later expansion
 
 
-def Drift_calc(person_position):
-    #Person Posistion is in GPS coordinates
-    person_start_position
 
 
+def drift_calc(person_position, wind_speed, wind_dir, dt_seconds):
 
-    #feaching api
-    #api_wind =
-    #api_currents =
+    EARTH_RADIUS = 6371000  #meters
+
+    lat, lon = person_position
+
+    #SAR drift model. Leeway Drift Theory
+    leeway_factor = 0.03    #3% of wind speed
+    drift_speed = wind_speed * leeway_factor
+
+    drift_direction = (wind_dir + 20) % 360   #leeway angle. Takes into acount that wind dose not push a person in one specific angle
+
+    #Convert speed+direction into movement vector
+    dx = drift_speed * math.sin(math.radians(drift_direction)) * dt_seconds
+    dy = drift_speed * math.cos(math.radians(drift_direction)) * dt_seconds
+
+    #Convert to GPS
+    new_lat = lat + (dy / EARTH_RADIUS) * (180 / math.pi)
+    new_lon = lon + (dx / (EARTH_RADIUS * math.cos(math.radians(lat)))) * (180 / math.pi)
+
+    return new_lat, new_lon
 
 
-
-    #person_position (then get wind direction and ocean currents and create a direction
-
-
-
-    #Return new position
-    pass
 
 def Expanding_Square_pattern(datum):
     # Sets the size of the value d in Expanding Square Searches
