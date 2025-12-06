@@ -199,6 +199,51 @@ def Drone_movement(current_pos, target_pos):
 
     return new_drone_pos
 
+def battery():
+
+    # ----------- Input Variables -----------
+    battery_mAh      = 7000      # Battery capacity (mAh)
+    battery_voltage  = 14.8      # Typical 4S LiPo voltage
+    motor_power_W    = 100       # Total motor power draw (W)
+    drone_weight     = 10        # kg (not used here, but available)
+    discharge_limit  = 0.80      # Use only 80% to protect LiPo
+
+
+    #Convert mAh → Wh
+    battery_Wh = (battery_mAh / 1000) * battery_voltage
+
+
+    #Apply discharge limit
+    usable_Wh = battery_Wh * discharge_limit
+
+
+    #flight time in hours
+    flight_time_hours = usable_Wh / motor_power_W
+
+
+    #make hours to minuts
+    all_flight_time = flight_time_hours * 60
+
+    print(f"Estimated flight time: {all_flight_time:.1f} minutes")
+
+
+    # If remaining flight time drops below 5 minutes, we call the drone back
+
+    drone_flight_time_remaining = all_flight_time   # you can update this in real-time later
+
+    if drone_flight_time_remaining - 5 <= 0:
+        # Call the drone back (not implemented)
+        print("Drone should return to base!")
+    else:
+        print("Drone can keep flying.")
+
+    return all_flight_time
+
+
+
+
+
+
 def Calc_pos(pos, bearing, distance):
 
     # Haversine Function Setup
