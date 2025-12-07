@@ -4,7 +4,6 @@ class Search_leg:
     intersect_point = None
     is_active = False
 
-
     # If intersect_dir = 1, we are heading towards the end_position
     # If = -1, we are heading towards the start_position
     # if = 0, default value + has no intersection point with beach polygon

@@ -3,11 +3,18 @@
 
 import math
 
+#API imports
+from xmlrpc.client import DateTime
+from urllib3.util import url
+import requests
+
+#Point to other files in project
 import Drone_Controller
 import Launch_Parameters
 import list_converter
 import search_leg
 import intersect_Calculator
+from Launch_Parameters import detection_rate
 
 
 # Function to calculate drift. Isolated for easy changing or later expansion
@@ -16,6 +23,52 @@ def Drift_calc(person_position):
 
     #Return new position
     pass
+
+def find_drift_for_location(location):
+
+    with open('c:\\users\\api-key.txt','r') as f:
+        api_key = f.read().strip()
+
+    url_2 = "https://dmigw.govcloud.dk/v1/forecastdata/collections/%3CMODEL%3E/items?api-key=%3Capi-key%3E&modelRun=%3CmodelRun%3E"
+    url = "https://opendataapi.dmi.dk/v1/forecastedr/collections/dkss_nsbs/position"
+
+    location_txt = f"POINT({location[1]} {location[0]})"
+    input = {"coords": location_txt, "crs": "crs84", "parameter-name": "current-u,current-v"}
+    header = {"X-Gravitee-Api-Key": api_key}
+
+    r = requests.get(url, params=input, headers=header)
+    r.raise_for_status()
+    data = r.json()
+
+    u = data["ranges"]["current-u"]["values"]
+    v = data["ranges"]["current-v"]["values"]
+
+    # ChatGPT made the formulas below
+    direction_deg = (math.degrees(math.atan2(u[120], v[120])) + 360) % 360
+    theta = math.radians(direction_deg)
+    u_unit = math.sin(theta)
+    v_unit = math.cos(theta)
+    speed = u[120] * u_unit + v[120] * v_unit
+
+    return direction_deg, speed * 25
+
+def api_wind_vector():
+    url = "https://dmi.cma.dk/api/weather/forecast/Ish%C3%B8j?hours=1"
+    try:
+        data = requests.get(url).json()
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch or parse API data: {e}")
+
+    # The API puts weather values inside forecast[0]
+    forecast = data.get("forecast", [{}])[0]
+
+    wind_speed = forecast.get("wind_speed", 0)
+    wind_dir   = forecast.get("wind_direction", 0)
+
+    print("wind_dir:", wind_dir, "wind_speed:", wind_speed)
+
+
+    return wind_speed, wind_dir
 
 def Expanding_Square_pattern(datum):
     # Sets the size of the value d in Expanding Square Searches
@@ -222,6 +275,25 @@ def Calc_pos(pos, bearing, distance):
     new_position = (new_lat,new_long)
 
     return new_position
+
+def create_drift_pattern(location):
+    drift_params = find_drift_for_location(location)
+    drift = []
+    pos = location
+    new_pos = (0,0)
+    for i in range(3600):
+        new_pos = Calc_pos(pos,drift_params[0], drift_params[1])
+        pos = new_pos
+        drift.append(pos)
+
+    return drift
+
+location = (55.588812,12.414018)
+#drift = find_drift_for_location(location)
+
+drift_pattern = create_drift_pattern(Calc_pos(Launch_Parameters.last_known_position, 180, 1000))
+
+list_converter.save_kml(drift_pattern,  "C:\\users\\bena3\\downloads\\drift.kml", "drift")
 
 # Route Planner SETUP
     # 1. Calculate search location from launch parameters
