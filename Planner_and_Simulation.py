@@ -17,19 +17,11 @@ import intersect_Calculator
 from Launch_Parameters import detection_rate
 
 
-# Function to calculate drift. Isolated for easy changing or later expansion
-def Drift_calc(person_position):
-    #Person Posistion is in GPS coordinates
-
-    #Return new position
-    pass
-
 def find_drift_for_location(location):
 
     with open('c:\\users\\api-key.txt','r') as f:
         api_key = f.read().strip()
 
-    url_2 = "https://dmigw.govcloud.dk/v1/forecastdata/collections/%3CMODEL%3E/items?api-key=%3Capi-key%3E&modelRun=%3CmodelRun%3E"
     url = "https://opendataapi.dmi.dk/v1/forecastedr/collections/dkss_nsbs/position"
 
     location_txt = f"POINT({location[1]} {location[0]})"
@@ -356,6 +348,11 @@ search_pattern_step = 0
 while running:
 
     drone_new_pos = Drone_movement(drone.position, target_pos)
+    dist_to_person = Calc_dist_to_point(drone.position, drift_pattern[drone.flight_time.__floor__()])
+
+    if dist_to_person <= Launch_Parameters.drone_FOV:
+
+        break
 
     if drone_new_pos == drone.position:
         #Calculating time/distance flown in last leg of pattern
