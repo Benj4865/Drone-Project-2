@@ -6,7 +6,6 @@ takeoff_time = 10
 drone_FOV = 20
 
 # Position declarations
-#last_known_position = (55.604792, 12.394959)
 last_known_position = (55.601040, 12.394581)
 time_since_contact = 0
 
@@ -15,7 +14,7 @@ estimated_drift_velocity = 1
 estimated_drift_bearing = 255
 #estimated_drift_bearing = 180
 
-person_start_position = (0,0)
+drift_length_seconds = 3600
 
 drone_cruise_speed = 10
 
