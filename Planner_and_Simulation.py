@@ -3,6 +3,12 @@
 
 import math
 
+#API imports
+from xmlrpc.client import DateTime
+from urllib3.util import url
+import requests
+
+#Point to other files in project
 import Drone_Controller
 import Launch_Parameters
 import list_converter
@@ -10,12 +16,51 @@ import search_leg
 import intersect_Calculator
 
 
-# Function to calculate drift. Isolated for easy changing or later expansion
-def Drift_calc(person_position):
-    #Person Posistion is in GPS coordinates
 
-    #Return new position
-    pass
+def find_drift_for_location(location):
+
+    with open('c:\\users\\api-key.txt','r') as f:
+        api_key = f.read().strip()
+
+    url = "https://opendataapi.dmi.dk/v1/forecastedr/collections/dkss_idw/position"
+
+    location_txt = f"POINT({location[1]} {location[0]})"
+    input = {"coords": location_txt, "crs": "crs84", "parameter-name": "current-u,current-v"}
+    header = {"X-Gravitee-Api-Key": api_key}
+
+    r = requests.get(url, params=input, headers=header)
+    r.raise_for_status()
+    data = r.json()
+
+    u = data["ranges"]["current-u"]["values"]
+    v = data["ranges"]["current-v"]["values"]
+
+    # ChatGPT made the formulas below
+    direction_deg = (math.degrees(math.atan2(u[0], v[0])) + 360) % 360
+    theta = math.radians(direction_deg)
+    u_unit = math.sin(theta)
+    v_unit = math.cos(theta)
+    speed = u[0] * u_unit + v[0] * v_unit
+
+    return direction_deg, speed * 25
+
+def api_wind_vector():
+    url = "https://dmi.cma.dk/api/weather/forecast/Ish%C3%B8j?hours=1"
+    try:
+        data = requests.get(url).json()
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch or parse API data: {e}")
+
+    # The API puts weather values inside forecast[0]
+    forecast = data.get("forecast", [{}])[0]
+
+    wind_speed = forecast.get("wind_speed", 0)
+    wind_dir   = forecast.get("wind_direction", 0)
+
+    print("wind_dir:", wind_dir, "wind_speed:", wind_speed)
+
+
+    return wind_speed, wind_dir
 
 def Expanding_Square_pattern(datum):
     # Sets the size of the value d in Expanding Square Searches
@@ -132,9 +177,8 @@ def select_route_expanding_square(search_legs, target_pos, drone):
                 current_leg_index += path_direction
 
     flight_path.insert(0, drone.drone_base)
-    flight_path.insert(1, target_pos)
+    flight_path.insert(1, datum)
     flight_path.append(drone.drone_base)
-
 
     list_converter.save_kml(flight_path, "C:\\users\\bena3\\downloads\\FlightPath_.kml", "FP")
 
@@ -223,97 +267,129 @@ def Calc_pos(pos, bearing, distance):
 
     return new_position
 
-# Route Planner SETUP
-    # 1. Calculate search location from launch parameters
+def create_drift_pattern(location):
+    drift_params = find_drift_for_location(location)
+    drift = []
+    pos = location
+    new_pos = (0,0)
+    for i in range(Launch_Parameters.drift_length_seconds):
+        new_pos = Calc_pos(pos,drift_params[0], drift_params[1])
+        pos = new_pos
+        drift.append(pos)
+
+    return drift
+
+def Fan_out_pattern(target_pos):
+
+    datum = Calc_pos(target_pos, Launch_Parameters.estimated_drift_bearing - 180, Launch_Parameters.drone_FOV * 3)
+    flight_path = []
+
+    sweep_angle = Launch_Parameters.sweep_angle
+
+    flight_path.append(datum)
+    angle_rad = math.radians(sweep_angle/2)
+    dist_to_point = (math.sin(angle_rad) * Launch_Parameters.drone_FOV) / math.sin((math.pi / 2) - angle_rad)
+
+    for i in range(1,70):
+        mid_point = Calc_pos(datum, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.drone_FOV * i)
+
+        if intersect_Calculator.calc_point_in_poly(Launch_Parameters.beach_plygon, mid_point):
+            break
+
+        left_point = Calc_pos(mid_point, Launch_Parameters.estimated_drift_bearing - 90, dist_to_point * i)
+        intersect_point = intersect_Calculator.calc_intersect_from_pos(mid_point, left_point, Launch_Parameters.beach_plygon)
+
+        if intersect_point is not None:
+            left_point = intersect_point
+
+        right_point = Calc_pos(mid_point, Launch_Parameters.estimated_drift_bearing + 90, dist_to_point * i)
+        intersect_point = intersect_Calculator.calc_intersect_from_pos(mid_point, right_point, Launch_Parameters.beach_plygon)
+        if intersect_point is not None:
+            right_point = intersect_point
+
+        if i%2 == 0:
+            flight_path.append(right_point)
+            flight_path.append(left_point)
+        else:
+            flight_path.append(left_point)
+            flight_path.append(right_point)
+
+    flight_path.insert(0, drone.drone_base)
+    flight_path.append(drone.drone_base)
+
+    list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Sweep.kml", "sweep")
+    return flight_path
+
+
+drift_pattern = create_drift_pattern(Launch_Parameters.last_known_position)
+list_converter.save_kml(drift_pattern,  "C:\\users\\bena3\\downloads\\drift.kml", "drift")
+
 
 # Creating Drone object
 drone =  Drone_Controller.Drone_Controller()
-drone.drone_base = (55.607124, 12.393114)
 drone.position = drone.drone_base
 
 # Target_pos is the Search Datum the first time it runs.
-target_pos = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
+datum = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
 
-#def Fan_out_pattern:
-
-datum = Calc_pos(target_pos, Launch_Parameters.estimated_drift_bearing - 180, Launch_Parameters.drone_FOV * 3)
-
-flight_path = []
-
-sweep_angle = Launch_Parameters.sweep_angle
-
-flight_path.append(datum)
-angle_rad = math.radians(sweep_angle/2)
-dist_to_point = (math.sin(angle_rad) * Launch_Parameters.drone_FOV) / math.sin((math.pi / 2) - angle_rad)
-
-for i in range(1,30):
-    mid_point = Calc_pos(datum, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.drone_FOV * i)
-
-    left_point = Calc_pos(mid_point, Launch_Parameters.estimated_drift_bearing - 90, dist_to_point * i)
-    intersect_point = intersect_Calculator.calc_intersect_from_pos(mid_point, left_point, Launch_Parameters.beach_plygon)
-    if intersect_point is not None:
-        left_point = intersect_point
-
-    right_point = Calc_pos(mid_point, Launch_Parameters.estimated_drift_bearing + 90, dist_to_point * i)
-    intersect_point = intersect_Calculator.calc_intersect_from_pos(mid_point, right_point, Launch_Parameters.beach_plygon)
-    if intersect_point is not None:
-        right_point = intersect_point
-
-    if i%2 == 0:
-        flight_path.append(right_point)
-        flight_path.append(left_point)
-    else:
-        flight_path.append(left_point)
-        flight_path.append(right_point)
-
-
-list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Sweep.kml", "sweep")
 
 # Creating a variable to save the last "completed" waypoint for later calculation
 prev_waypoint = drone.position
 
-search_legs = Expanding_Square_pattern(target_pos)
 
-flight_path = select_route_expanding_square(search_legs, target_pos, drone)
+#search_legs = Expanding_Square_pattern(datum)
+#flight_path = select_route_expanding_square(search_legs, datum, drone)
+
+flight_path = Fan_out_pattern(datum)
+
 
 
 running = True
 # Keeps track of where in the search pattern the drone is
 search_pattern_step = 0
+path_flown = []
 
 while running:
 
-    drone_new_pos = Drone_movement(drone.position, target_pos)
+    path_flown.append(drone.position)
+    drone_new_pos = Drone_movement(drone.position, flight_path[search_pattern_step])
+
+
 
     if drone_new_pos == drone.position:
-        #Calculating time/distance flown in last leg of pattern
-        last_leg_dist = Calc_dist_to_point(drone.position, prev_waypoint)
-        last_leg_time = (last_leg_dist / Launch_Parameters.drone_cruise_speed) + 2 # +2 to add an acceleration "slowdown" and "speedup" for changing directions
 
-        # updating drone time and dist flown
-        drone.distance_flown += last_leg_dist
-        drone.flight_time += last_leg_time
-
-        #Updating previous waypoint to current position
-        prev_waypoint = drone.position
-        # Updating target position
-        leg = search_legs[search_pattern_step]
-        target_pos = leg.end_pos
+        # Penalty for changing direction
+        drone.flight_time += 2
 
         # Increments the counter, keeping track of progress in pattern
         search_pattern_step += 1
-        if search_pattern_step >= len(search_legs):
 
+        if search_pattern_step >= len(flight_path):
             break
 
-    drone.position = drone_new_pos
+    dist_to_person = Calc_dist_to_point(drone_new_pos, drift_pattern[drone.flight_time.__floor__()])
 
+    if dist_to_person <= Launch_Parameters.drone_FOV:
+        print("Person found at: " + str(drift_pattern[drone.flight_time.__floor__()]))
+        break
+
+    dist_flown = Calc_dist_to_point(drone.position, drone_new_pos)
+    drone.distance_flown += dist_flown
+    time_flown = dist_flown / Launch_Parameters.drone_cruise_speed
+    drone.flight_time += time_flown
+    drone.battery_Wh_left -= (time_flown/3600) * drone.discharge_rate
+    dist_home = Calc_dist_to_point(drone_new_pos, drone.drone_base)
+    flight_time_home = dist_home/Launch_Parameters.drone_cruise_speed
+    wh_home = (flight_time_home/3600) * drone.discharge_rate
+
+    if drone.battery_Wh_left - wh_home <= 10:
+        search_pattern_step = len(flight_path) - 1
+
+    drone.position = drone_new_pos
 
 print(drone.flight_time)
 print(drone.distance_flown)
 
-#list_converter.save_kml(search_legs, "C:\\users\\bena3\\downloads\\ESPattern_2.kml", "ESPattern")
+list_converter.save_kml(path_flown, "C:\\users\\bena3\\downloads\\Path_Flown.kml", "Path_Flown")
 
-#for point in waypoints:
-#    print("(" + str(point[0]) + ", " + str(point[1]) + "),")
 
