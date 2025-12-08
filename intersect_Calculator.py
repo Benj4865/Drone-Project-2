@@ -79,3 +79,12 @@ def calc_intersect_from_pos(pos_1, pos_2, polygon):
                 print("Overlapping segment endpoints:", coords[0], "to", coords[-1])
 
             return coords[0]
+
+def calc_point_in_poly(beach_polygon, pos):
+    beach = Polygon(beach_polygon)
+    point = Point(pos)
+
+    if beach.contains(point):
+        return True
+    else:
+        return False

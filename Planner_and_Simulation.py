@@ -290,11 +290,15 @@ def Fan_out_pattern(target_pos):
     angle_rad = math.radians(sweep_angle/2)
     dist_to_point = (math.sin(angle_rad) * Launch_Parameters.drone_FOV) / math.sin((math.pi / 2) - angle_rad)
 
-    for i in range(1,30):
+    for i in range(1,70):
         mid_point = Calc_pos(datum, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.drone_FOV * i)
+
+        if intersect_Calculator.calc_point_in_poly(Launch_Parameters.beach_plygon, mid_point):
+            break
 
         left_point = Calc_pos(mid_point, Launch_Parameters.estimated_drift_bearing - 90, dist_to_point * i)
         intersect_point = intersect_Calculator.calc_intersect_from_pos(mid_point, left_point, Launch_Parameters.beach_plygon)
+
         if intersect_point is not None:
             left_point = intersect_point
 

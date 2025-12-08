@@ -11,7 +11,7 @@ time_since_contact = 0
 
 # To give the drone an idea about what way the person could be drifting.
 estimated_drift_velocity = 1
-estimated_drift_bearing = 255
+estimated_drift_bearing = 275
 #estimated_drift_bearing = 180
 
 drift_length_seconds = 3600
