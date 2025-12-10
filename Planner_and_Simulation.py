@@ -477,11 +477,11 @@ def simulation(drone, flight_path, drift_pattern ):
 with open('data.csv', 'w', newline='') as csvfile:
     data_writer = csv.writer(csvfile, delimiter=',', quotechar='"')
     data_writer.writerow(["Simulation ID","Pattern Type", "Flight Time", "Distance Flown", "Person Found", "Estimated Position Lat",
-                          "Last Known Position Lon", "Actual Position Lat", "Actual Position Lon",
+                          "Estimated Position Lon", "Actual Position Lat", "Actual Position Lon",
                           "Deviation Direction", "Deviation Distance", "Drift Direction", "Drift Speed", "Time Since Contact"]
                          )
 
-for sim_id in range(100):
+for sim_id in range(500):
     # generating a new last_known_position for use in next set of simulations
     while True:
         rand_pos = (random.uniform(55.591317, 55.607440), random.uniform(12.373881, 12.400545))
