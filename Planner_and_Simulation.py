@@ -2,6 +2,8 @@
 # The Search Datum is the esitmated posistion of the person corrected for drift
 
 import math
+import random
+import csv
 
 #API imports
 from xmlrpc.client import DateTime
@@ -14,7 +16,7 @@ import Launch_Parameters
 import list_converter
 import search_leg
 import intersect_Calculator
-
+from Launch_Parameters import last_known_position
 
 
 def find_drift_for_location(location):
@@ -42,7 +44,7 @@ def find_drift_for_location(location):
     v_unit = math.cos(theta)
     speed = u[0] * u_unit + v[0] * v_unit
 
-    return direction_deg, speed * 25
+    return direction_deg, speed
 
 def api_wind_vector():
     url = "https://dmi.cma.dk/api/weather/forecast/Ish%C3%B8j?hours=1"
@@ -131,7 +133,12 @@ def select_route_expanding_square(search_legs, target_pos, drone):
         if len(unprocessed_indexes) == 0:
             break
 
-        current_leg = modified_search_legs[current_leg_index]
+        # Was put in to stop an index out of range error, due to some specific simulation conditions
+        if current_leg_index < len(modified_search_legs):
+            current_leg = modified_search_legs[current_leg_index]
+        else:
+            # break out of generation and later append path home
+            break
 
         if current_leg.is_active and current_leg.intersect_point == None:
             if path_direction == 1:
@@ -176,11 +183,29 @@ def select_route_expanding_square(search_legs, target_pos, drone):
 
                 current_leg_index += path_direction
 
+        else:
+            # We only get here if a leg is inactive and we cannot continue in the pattern. Then we break
+            break
+
     flight_path.insert(0, drone.drone_base)
     flight_path.insert(1, datum)
     flight_path.append(drone.drone_base)
 
     list_converter.save_kml(flight_path, "C:\\users\\bena3\\downloads\\FlightPath_.kml", "FP")
+
+    return flight_path
+
+def Convert_legs_to_route(legs):
+
+    flight_path = []
+
+    for leg in legs:
+        flight_path.append(leg.start_pos)
+        flight_path.append(leg.end_pos)
+
+    flight_path.insert(0, drone.drone_base)
+    flight_path.insert(1, datum)
+    flight_path.append(drone.drone_base)
 
     return flight_path
 
@@ -267,19 +292,22 @@ def Calc_pos(pos, bearing, distance):
 
     return new_position
 
-def create_drift_pattern(location):
-    drift_params = find_drift_for_location(location)
+def create_drift_pattern(drift_data, person_pos):
     drift = []
-    pos = location
+    pos = person_pos
     new_pos = (0,0)
     for i in range(Launch_Parameters.drift_length_seconds):
-        new_pos = Calc_pos(pos,drift_params[0], drift_params[1])
-        pos = new_pos
+        new_pos = Calc_pos(pos,drift_data[0], drift_data[1])
+
+        # if the person drifted ashore, they will just lay there for the remainder of the generation.
+        if not intersect_Calculator.calc_point_in_poly(Launch_Parameters.beach_plygon, new_pos):
+            pos = new_pos
+
         drift.append(pos)
 
     return drift
 
-def Fan_out_pattern(target_pos):
+def SweepSearch(target_pos):
 
     datum = Calc_pos(target_pos, Launch_Parameters.estimated_drift_bearing - 180, Launch_Parameters.drone_FOV * 3)
     flight_path = []
@@ -320,76 +348,215 @@ def Fan_out_pattern(target_pos):
     list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Sweep.kml", "sweep")
     return flight_path
 
+#(Could take the drift pattern as an input, and use the drift speed to define radius of sector. This was however cut for time, and a fixed value selected)
+def SectorSearch(datum, drift_direction):
 
-drift_pattern = create_drift_pattern(Launch_Parameters.last_known_position)
-list_converter.save_kml(drift_pattern,  "C:\\users\\bena3\\downloads\\drift.kml", "drift")
+    d = Launch_Parameters.drone_FOV * 10
+    current_pos = datum
+    dir = drift_direction
+    flight_path = []
+
+    for search in range(3):
+        for leg in range(7):
+            if leg in [2,4]:
+                temp_d = d
+            else:
+                temp_d = d/2
+
+            next_pos = Calc_pos(current_pos, dir, temp_d)
+            flight_path.append(next_pos)
+            dir += 120
+            if dir > 360:
+                dir = dir - 360
+
+            current_pos = next_pos
+
+        dir += 30
+        if dir > 360:
+            dir -= 360
+
+        # After the first search, a new datum could be calculated and used to move the search pattern in the drift direction.
+        # We Chose not to implement it, due to both low drift speeds along coastlines and lack of time.
+
+    flight_path.insert(0, drone.drone_base)
+    flight_path.insert(1, datum)
+    flight_path.append(drone.drone_base)
+
+    return flight_path
+
+def LineSearch(datum, drift_direction):
+
+    d = Launch_Parameters.drone_FOV * 5
+    current_pos = datum
+    dir = drift_direction - 90
+    if dir < 0:
+        dir = 360 - dir
+
+    flight_path = []
 
 
-# Creating Drone object
-drone =  Drone_Controller.Drone_Controller()
-drone.position = drone.drone_base
+    for leg in range(30):
+        if leg == 0:
+            temp_d = d/2
+        else:
+            if leg % 2 == 0:
+                temp_d = d
+            else:
+                temp_d = Launch_Parameters.drone_FOV
 
-# Target_pos is the Search Datum the first time it runs.
-datum = Calc_pos(Launch_Parameters.last_known_position, Launch_Parameters.estimated_drift_bearing, Launch_Parameters.estimated_drift_velocity * Launch_Parameters.time_since_contact)
+        next_pos = Calc_pos(current_pos, dir, temp_d)
+        flight_path.append(next_pos)
 
+        if leg % 4 in (0, 1):
+            dir += 90
+            if dir > 360:
+                dir = dir - 360
+        else:
+            dir -= 90
+            if dir < 0:
+                dir = 360 - dir
 
-# Creating a variable to save the last "completed" waypoint for later calculation
-prev_waypoint = drone.position
+        current_pos = next_pos
 
+    flight_path.insert(0, drone.drone_base)
+    flight_path.insert(1, datum)
+    flight_path.append(drone.drone_base)
 
-#search_legs = Expanding_Square_pattern(datum)
-#flight_path = select_route_expanding_square(search_legs, datum, drone)
+    return flight_path
 
-flight_path = Fan_out_pattern(datum)
+def simulation(drone, flight_path, drift_pattern ):
 
+    running = True
+    # Keeps track of where in the search pattern the drone is
+    search_pattern_step = 0
+    path_flown = []
+    person_found = False
+    while running:
 
+        path_flown.append(drone.position)
+        drone_new_pos = Drone_movement(drone.position, flight_path[search_pattern_step])
 
-running = True
-# Keeps track of where in the search pattern the drone is
-search_pattern_step = 0
-path_flown = []
+        if drone_new_pos == drone.position:
 
-while running:
+            # Penalty for changing direction
+            drone.flight_time += 2
 
-    path_flown.append(drone.position)
-    drone_new_pos = Drone_movement(drone.position, flight_path[search_pattern_step])
+            # Increments the counter, keeping track of progress in pattern
+            search_pattern_step += 1
 
+            if search_pattern_step >= len(flight_path):
+                break
 
+        dist_to_person = Calc_dist_to_point(drone_new_pos, drift_pattern[drone.flight_time.__floor__()])
 
-    if drone_new_pos == drone.position:
-
-        # Penalty for changing direction
-        drone.flight_time += 2
-
-        # Increments the counter, keeping track of progress in pattern
-        search_pattern_step += 1
-
-        if search_pattern_step >= len(flight_path):
+        if dist_to_person <= Launch_Parameters.drone_FOV:
+            print("Person found at: " + str(drift_pattern[drone.flight_time.__floor__()]))
+            person_found = True
             break
 
-    dist_to_person = Calc_dist_to_point(drone_new_pos, drift_pattern[drone.flight_time.__floor__()])
+        dist_flown = Calc_dist_to_point(drone.position, drone_new_pos)
+        drone.distance_flown += dist_flown
+        time_flown = dist_flown / Launch_Parameters.drone_cruise_speed
+        drone.flight_time += time_flown
+        drone.battery_Wh_left -= (time_flown/3600) * drone.discharge_rate
+        dist_home = Calc_dist_to_point(drone_new_pos, drone.drone_base)
+        flight_time_home = dist_home/Launch_Parameters.drone_cruise_speed
+        wh_home = (flight_time_home/3600) * drone.discharge_rate
 
-    if dist_to_person <= Launch_Parameters.drone_FOV:
-        print("Person found at: " + str(drift_pattern[drone.flight_time.__floor__()]))
-        break
+        if drone.battery_Wh_left - wh_home <= 10:
+            search_pattern_step = len(flight_path) - 1
 
-    dist_flown = Calc_dist_to_point(drone.position, drone_new_pos)
-    drone.distance_flown += dist_flown
-    time_flown = dist_flown / Launch_Parameters.drone_cruise_speed
-    drone.flight_time += time_flown
-    drone.battery_Wh_left -= (time_flown/3600) * drone.discharge_rate
-    dist_home = Calc_dist_to_point(drone_new_pos, drone.drone_base)
-    flight_time_home = dist_home/Launch_Parameters.drone_cruise_speed
-    wh_home = (flight_time_home/3600) * drone.discharge_rate
+        drone.position = drone_new_pos
 
-    if drone.battery_Wh_left - wh_home <= 10:
-        search_pattern_step = len(flight_path) - 1
+    print(drone.flight_time)
+    print(drone.distance_flown)
+    #list_converter.save_kml(path_flown, "C:\\users\\bena3\\downloads\\Path_Flown.kml", "Path_Flown")
 
-    drone.position = drone_new_pos
+    return drone.flight_time, drone.distance_flown, person_found
 
-print(drone.flight_time)
-print(drone.distance_flown)
+with open('data.csv', 'w', newline='') as csvfile:
+    data_writer = csv.writer(csvfile, delimiter=',', quotechar='"')
+    data_writer.writerow(["Simulation ID","Pattern Type", "Flight Time", "Distance Flown", "Person Found", "Estimated Position Lat",
+                          "Last Known Position Lon", "Actual Position Lat", "Actual Position Lon",
+                          "Deviation Direction", "Deviation Distance", "Drift Direction", "Drift Speed", "Time Since Contact"]
+                         )
 
-list_converter.save_kml(path_flown, "C:\\users\\bena3\\downloads\\Path_Flown.kml", "Path_Flown")
+for sim_id in range(100):
+    # generating a new last_known_position for use in next set of simulations
+    while True:
+        rand_pos = (random.uniform(55.591317, 55.607440), random.uniform(12.373881, 12.400545))
+
+        # checks if rand_pos is on beach, and if not, saves position for use in simulation
+        if not intersect_Calculator.calc_point_in_poly(Launch_Parameters.beach_plygon, rand_pos):
+            Launch_Parameters.last_known_position = rand_pos
+            break
+
+    while True:
+        deviation_dir = random.randrange(0,360)
+        deviation_dist = random.randrange(0, 50)
+
+        person_pos = Calc_pos(Launch_Parameters.last_known_position, deviation_dir, deviation_dist)
+
+        # checks if the shifted position is on the beach, and retries until the shifted point is in water
+        if not intersect_Calculator.calc_point_in_poly(Launch_Parameters.beach_plygon, person_pos):
+            break
+
+
+
+    Launch_Parameters.time_since_contact = random.randrange(0, 600)
+
+    #drift_data = find_drift_for_location(person_pos) #Remove comment to run with AP calls
+    drift_data = (random.randrange(0,360), random.random())
+    drift_pattern = create_drift_pattern(drift_data, person_pos)
+
+    # Target_pos is the Search Datum the first time it runs.
+    datum = Calc_pos(Launch_Parameters.last_known_position, drift_data[0], drift_data[1] * Launch_Parameters.time_since_contact)
+
+    #list_converter.save_kml(drift_pattern,  "C:\\users\\bena3\\downloads\\drift.kml", "drift")
+
+    for pattern in range(5):
+
+        # Creating Drone object
+        drone =  Drone_Controller.Drone_Controller()
+        drone.position = drone.drone_base
+
+        if pattern == 0:
+            path_type = "Expanding Square"
+            search_legs = Expanding_Square_pattern(datum)
+            flight_path = Convert_legs_to_route(search_legs)
+
+        elif pattern == 1:
+            path_type = "Expanding Square Adaptive"
+            search_legs = Expanding_Square_pattern(datum)
+            flight_path = select_route_expanding_square(search_legs, datum, drone)
+
+        elif pattern == 2:
+            path_type = "Line Search"
+            flight_path = LineSearch(datum, drift_data[0])
+
+        elif pattern == 3:
+            path_type = "Sweep Adaptive"
+            flight_path = SweepSearch(datum)
+
+        elif pattern == 4:
+            path_type = "Sector Search"
+            flight_path = SectorSearch(datum, drift_data[0])
+
+
+        flight_time, distance_flown, person_found = simulation(drone, flight_path, drift_pattern)
+
+
+        with open('data.csv', 'a', newline='') as csvfile:
+            data_writer = csv.writer(csvfile, delimiter=',', quotechar='"')
+            data_writer.writerow([sim_id,path_type, flight_time,
+                                  distance_flown, person_found,
+                                  Launch_Parameters.last_known_position[0], Launch_Parameters.last_known_position[1],
+                                  person_pos[0], person_pos[1], deviation_dir,
+                                  deviation_dist, drift_data[0],
+                                  drift_data[1], Launch_Parameters.time_since_contact]
+                                 )
+
+        #list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Line_s.kml", "Line_S")
+
 
 
