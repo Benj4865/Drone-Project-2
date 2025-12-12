@@ -158,7 +158,10 @@ def select_route_expanding_square(search_legs, target_pos, drone):
                 break
 
             next_leg_index = current_leg_index + path_direction
-            next_leg = modified_search_legs[next_leg_index]
+            if next_leg_index > len(modified_search_legs) -1:
+                break
+            else:
+                next_leg = modified_search_legs[next_leg_index]
 
             if next_leg.is_active == False:
 
@@ -190,8 +193,6 @@ def select_route_expanding_square(search_legs, target_pos, drone):
     flight_path.insert(0, drone.drone_base)
     flight_path.insert(1, datum)
     flight_path.append(drone.drone_base)
-
-    list_converter.save_kml(flight_path, "C:\\users\\bena3\\downloads\\FlightPath_.kml", "FP")
 
     return flight_path
 
@@ -345,13 +346,12 @@ def SweepSearch(target_pos):
     flight_path.insert(0, drone.drone_base)
     flight_path.append(drone.drone_base)
 
-    list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Sweep.kml", "sweep")
     return flight_path
 
 #(Could take the drift pattern as an input, and use the drift speed to define radius of sector. This was however cut for time, and a fixed value selected)
 def SectorSearch(datum, drift_direction):
 
-    d = Launch_Parameters.drone_FOV * 10
+    d = Launch_Parameters.drone_FOV * Launch_Parameters.sector_diameter_multiplier
     current_pos = datum
     dir = drift_direction
     flight_path = []
@@ -474,16 +474,25 @@ def simulation(drone, flight_path, drift_pattern ):
 
     return drone.flight_time, drone.distance_flown, person_found
 
+
 with open('data.csv', 'w', newline='') as csvfile:
     data_writer = csv.writer(csvfile, delimiter=',', quotechar='"')
     data_writer.writerow(["Simulation ID","Pattern Type", "Flight Time", "Distance Flown", "Person Found", "Estimated Position Lat",
                           "Estimated Position Lon", "Actual Position Lat", "Actual Position Lon",
                           "Deviation Direction", "Deviation Distance", "Drift Direction", "Drift Speed", "Time Since Contact"]
                          )
+single_run = False
 
-for sim_id in range(500):
+# Default = 360
+max_dev_dir = 360
+#Default = 50
+max_dev_dist = 50
+
+person_pos = Launch_Parameters.last_known_position
+
+for sim_id in range(100):
     # generating a new last_known_position for use in next set of simulations
-    while True:
+    while True and not single_run:
         rand_pos = (random.uniform(55.591317, 55.607440), random.uniform(12.373881, 12.400545))
 
         # checks if rand_pos is on beach, and if not, saves position for use in simulation
@@ -492,8 +501,10 @@ for sim_id in range(500):
             break
 
     while True:
-        deviation_dir = random.randrange(0,360)
-        deviation_dist = random.randrange(0, 50)
+        deviation_dir = random.randrange(0,max_dev_dir)
+        Launch_Parameters.estimated_drift_bearing = deviation_dir
+        deviation_dist = random.randrange(0, max_dev_dist)
+
 
         person_pos = Calc_pos(Launch_Parameters.last_known_position, deviation_dir, deviation_dist)
 
@@ -506,13 +517,14 @@ for sim_id in range(500):
     Launch_Parameters.time_since_contact = random.randrange(0, 600)
 
     #drift_data = find_drift_for_location(person_pos) #Remove comment to run with AP calls
-    drift_data = (random.randrange(0,360), random.random())
+    #drift_data = (random.randrange(0,360), random.random())
+    drift_data = (Launch_Parameters.estimated_drift_bearing, random.random())
     drift_pattern = create_drift_pattern(drift_data, person_pos)
 
     # Target_pos is the Search Datum the first time it runs.
     datum = Calc_pos(Launch_Parameters.last_known_position, drift_data[0], drift_data[1] * Launch_Parameters.time_since_contact)
 
-    #list_converter.save_kml(drift_pattern,  "C:\\users\\bena3\\downloads\\drift.kml", "drift")
+    list_converter.save_kml(drift_pattern,  "C:\\users\\bena3\\downloads\\drift.kml", "drift")
 
     for pattern in range(5):
 
@@ -524,23 +536,28 @@ for sim_id in range(500):
             path_type = "Expanding Square"
             search_legs = Expanding_Square_pattern(datum)
             flight_path = Convert_legs_to_route(search_legs)
+            list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Expanding_Square.kml", "Expanding Square")
 
         elif pattern == 1:
             path_type = "Expanding Square Adaptive"
             search_legs = Expanding_Square_pattern(datum)
             flight_path = select_route_expanding_square(search_legs, datum, drone)
+            list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Expanding_Square_Adaptive.kml", "Expanding Square Adaptive")
 
         elif pattern == 2:
             path_type = "Line Search"
             flight_path = LineSearch(datum, drift_data[0])
+            list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Line_Search.kml", "Line Search")
 
         elif pattern == 3:
             path_type = "Sweep Adaptive"
             flight_path = SweepSearch(datum)
+            list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Sweep_Adaptive.kml", "Sweep Adaptive")
 
         elif pattern == 4:
             path_type = "Sector Search"
             flight_path = SectorSearch(datum, drift_data[0])
+            list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Sector_Search.kml", "Sector Search")
 
 
         flight_time, distance_flown, person_found = simulation(drone, flight_path, drift_pattern)
@@ -556,7 +573,10 @@ for sim_id in range(500):
                                   drift_data[1], Launch_Parameters.time_since_contact]
                                  )
 
-        #list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Line_s.kml", "Line_S")
+    #list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Line_s.kml", "Line_S")
+
+
+
 
 
 

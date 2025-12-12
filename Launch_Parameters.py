@@ -1,26 +1,26 @@
 # In this file we put the launch-parameters for the drones takeoff
 
-#Global Parameters
+#Global drone launch parameters
 detection_rate = 0.9
 takeoff_time = 10
 drone_FOV = 20
 
-# Position declarations
-last_known_position = (55.601040, 12.394581)
-time_since_contact = 0
-
-# To give the drone an idea about what way the person could be drifting.
-estimated_drift_velocity = 1
-estimated_drift_bearing = 275
-#estimated_drift_bearing = 180
-
-drift_length_seconds = 3600
-
 drone_cruise_speed = 10
 
-expanding_square_count = 40
-sweep_angle = 45
+# Person declarations
+last_known_position = (55.602544, 12.386719)
+time_since_contact = 0
+estimated_drift_velocity = 1
+estimated_drift_bearing = 275
 
+
+# Paramerters used for generating patterns
+sector_diameter_multiplier = 15
+expanding_square_count = 50
+sweep_angle = 45
+drift_length_seconds = 3600
+
+# The beach polygon is defined here
 beach_plygon = [
     (55.60598816751413, 12.39978238203205),
     (55.60631021757251, 12.39908488296497),
@@ -39,26 +39,4 @@ beach_plygon = [
     (55.61066436837171, 12.38947005647851),
     (55.60877852933291, 12.39982173662178),
     (55.60598816751413, 12.39978238203205)
-
 ]
-
-
-
-
-beach_plygon_2 =[
-    (55.6063174018631, 12.39904497621255),
-    (55.6061786360019, 12.39712516805618),
-    (55.60571375201797, 12.39495223039052),
-    (55.60524333272004, 12.39315661419367),
-    (55.60496217397807, 12.39210947778147),
-    (55.60410070731273, 12.38933999841509),
-    (55.60537470864551, 12.38760859764925),
-    (55.60681699469807, 12.39046257692068),
-    (55.6082827800544,  12.39696614396974),
-    (55.60786091329714, 12.39885605154945),
-    (55.6063174018631,  12.39904497621255)
-]
-
-
-
-
