@@ -1,4 +1,8 @@
 from shapely.geometry import Polygon, LineString, Point
+from geopy.distance import geodesic
+from shapely.ops import nearest_points
+
+from Launch_Parameters import beach_plygon
 from search_leg import Search_leg
 import Launch_Parameters
 
@@ -88,3 +92,13 @@ def calc_point_in_poly(beach_polygon, pos):
         return True
     else:
         return False
+
+def calc_dist_to_poly(beach_plygon, pos):
+    beach = Polygon(beach_plygon)
+    p = Point(pos)
+
+    p_on_poly, _  = nearest_points(beach, p)
+
+    geo_dist = geodesic(([pos[1], pos[0]]),(p_on_poly.y, p_on_poly.x))
+
+    return geo_dist

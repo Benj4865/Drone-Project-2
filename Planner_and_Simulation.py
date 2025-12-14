@@ -479,7 +479,7 @@ with open('data.csv', 'w', newline='') as csvfile:
     data_writer = csv.writer(csvfile, delimiter=',', quotechar='"')
     data_writer.writerow(["Simulation ID","Pattern Type", "Flight Time", "Distance Flown", "Person Found", "Estimated Position Lat",
                           "Estimated Position Lon", "Actual Position Lat", "Actual Position Lon",
-                          "Deviation Direction", "Deviation Distance", "Drift Direction", "Drift Speed", "Time Since Contact"]
+                          "Deviation Direction", "Deviation Distance", "Drift Direction", "Drift Speed", "Time Since Contact", "Distance To Shore"]
                          )
 single_run = False
 
@@ -490,7 +490,7 @@ max_dev_dist = 50
 
 person_pos = Launch_Parameters.last_known_position
 
-for sim_id in range(100):
+for sim_id in range(1000):
     # generating a new last_known_position for use in next set of simulations
     while True and not single_run:
         rand_pos = (random.uniform(55.591317, 55.607440), random.uniform(12.373881, 12.400545))
@@ -518,19 +518,21 @@ for sim_id in range(100):
 
     #drift_data = find_drift_for_location(person_pos) #Remove comment to run with AP calls
     #drift_data = (random.randrange(0,360), random.random())
-    drift_data = (Launch_Parameters.estimated_drift_bearing, random.random())
+    drift_data = (Launch_Parameters.estimated_drift_bearing, random.random()*5)
     drift_pattern = create_drift_pattern(drift_data, person_pos)
 
     # Target_pos is the Search Datum the first time it runs.
     datum = Calc_pos(Launch_Parameters.last_known_position, drift_data[0], drift_data[1] * Launch_Parameters.time_since_contact)
 
     list_converter.save_kml(drift_pattern,  "C:\\users\\bena3\\downloads\\drift.kml", "drift")
+    distance_to_shore = intersect_Calculator.calc_dist_to_poly(Launch_Parameters.beach_plygon, person_pos)
 
     for pattern in range(5):
 
         # Creating Drone object
         drone =  Drone_Controller.Drone_Controller()
         drone.position = drone.drone_base
+
 
         if pattern == 0:
             path_type = "Expanding Square"
@@ -570,7 +572,7 @@ for sim_id in range(100):
                                   Launch_Parameters.last_known_position[0], Launch_Parameters.last_known_position[1],
                                   person_pos[0], person_pos[1], deviation_dir,
                                   deviation_dist, drift_data[0],
-                                  drift_data[1], Launch_Parameters.time_since_contact]
+                                  drift_data[1], Launch_Parameters.time_since_contact, distance_to_shore]
                                  )
 
     #list_converter.save_kml(flight_path,  "C:\\users\\bena3\\downloads\\Line_s.kml", "Line_S")
