@@ -345,7 +345,7 @@ def SweepSearch(target_pos):
             flight_path.append(right_point)
 
     flight_path.insert(0, drone.drone_base)
-    flight_path.append(drone.drone_base)
+    #flight_path.append(drone.drone_base)
 
     return flight_path
 
@@ -496,7 +496,7 @@ for sim_id in range(1):
     while True and not single_run:
         #rand_pos = (random.uniform(55.591317, 55.607440), random.uniform(12.373881, 12.400545))
         #rand_pos = (55.604375,12.391564)
-        rand_pos = (55.599743, 12.391125)
+        rand_pos = (55.597736, 12.386105)
         # checks if rand_pos is on beach, and if not, saves position for use in simulation
         if not intersect_Calculator.calc_point_in_poly(Launch_Parameters.beach_plygon, rand_pos):
             Launch_Parameters.last_known_position = rand_pos

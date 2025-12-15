@@ -8,10 +8,11 @@ drone_FOV = 20
 drone_cruise_speed = 10
 
 # Person declarations
-last_known_position = (55.602544, 12.386719)
+#last_known_position = (55.602544, 12.386719)
+last_known_position = (55.597981,12.387062)
 time_since_contact = 0
 estimated_drift_velocity = 1
-estimated_drift_bearing = 55
+estimated_drift_bearing =270
 
 
 # Paramerters used for generating patterns
