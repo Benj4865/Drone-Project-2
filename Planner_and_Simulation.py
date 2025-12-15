@@ -16,9 +16,9 @@ import Launch_Parameters
 import list_converter
 import search_leg
 import intersect_Calculator
-from Launch_Parameters import last_known_position
 
 
+#This function retrieves the water surface speed and direction from DMI's environmental prediction model
 def find_drift_for_location(location):
 
     with open('c:\\users\\api-key.txt','r') as f:
@@ -46,12 +46,13 @@ def find_drift_for_location(location):
 
     return direction_deg, speed
 
+#This function retrieves the wind speed and direction from DMI
 def api_wind_vector():
     url = "https://dmi.cma.dk/api/weather/forecast/Ish%C3%B8j?hours=1"
     try:
         data = requests.get(url).json()
     except Exception as e:
-        raise RuntimeError(f"Failed to fetch or parse API data: {e}")
+        raise RuntimeError(f"Somthing went wrong when fetching data: {e}")
 
     # The API puts weather values inside forecast[0]
     forecast = data.get("forecast", [{}])[0]
@@ -64,6 +65,7 @@ def api_wind_vector():
 
     return wind_speed, wind_dir
 
+#This function creates the "ideal" expanding square pattern
 def Expanding_Square_pattern(datum):
     # Sets the size of the value d in Expanding Square Searches
     d = Launch_Parameters.drone_FOV
@@ -108,6 +110,7 @@ def Expanding_Square_pattern(datum):
 
     return search_legs
 
+#This function selects the route through the expanding square pattern to modify it
 def select_route_expanding_square(search_legs, target_pos, drone):
 
     # Used to keep track of which search legs have already been modified
@@ -203,6 +206,7 @@ def select_route_expanding_square(search_legs, target_pos, drone):
 
     return flight_path
 
+#This function converts a list of search legs object to a flight path
 def Convert_legs_to_route(legs):
 
     flight_path = []
@@ -217,6 +221,7 @@ def Convert_legs_to_route(legs):
 
     return flight_path
 
+#This function calculated the distance between to coordinates
 def Calc_dist_to_point(current_pos, target_pos):
 
     # Math done by ChatGPT
@@ -242,6 +247,7 @@ def Calc_dist_to_point(current_pos, target_pos):
 
     return distance_m
 
+#This function handles the movement of the drone object, and is called continually throughout the simulation loop
 def Drone_movement(current_pos, target_pos):
 
     # Math done by ChatGPT
@@ -276,6 +282,7 @@ def Drone_movement(current_pos, target_pos):
 
     return new_drone_pos
 
+#This function is used to calculate a new coordinate from an existing coordinate, a bearing and a distance
 def Calc_pos(pos, bearing, distance):
 
     # Haversine Function Setup
@@ -300,6 +307,7 @@ def Calc_pos(pos, bearing, distance):
 
     return new_position
 
+#This function call the fin_drift_for_location function and build a drift pattern from the data recieved.
 def create_drift_pattern(drift_data, person_pos):
     drift = []
     pos = person_pos
@@ -315,6 +323,7 @@ def create_drift_pattern(drift_data, person_pos):
 
     return drift
 
+#Generates the sweep pattern
 def SweepSearch(target_pos):
 
     datum = Calc_pos(target_pos, Launch_Parameters.estimated_drift_bearing - 180, Launch_Parameters.drone_FOV * 3)
@@ -355,6 +364,7 @@ def SweepSearch(target_pos):
 
     return flight_path
 
+#Generates the sector seach pattern
 #(Could take the drift pattern as an input, and use the drift speed to define radius of sector. This was however cut for time, and a fixed value selected)
 def SectorSearch(datum, drift_direction):
 
@@ -391,6 +401,7 @@ def SectorSearch(datum, drift_direction):
 
     return flight_path
 
+#Generates the line search patten
 def LineSearch(datum, drift_direction):
 
     d = Launch_Parameters.drone_FOV * 5
@@ -431,6 +442,7 @@ def LineSearch(datum, drift_direction):
 
     return flight_path
 
+#The main simulation loop that simulates a single "mission"
 def simulation(drone, flight_path, drift_pattern ):
 
     running = True
