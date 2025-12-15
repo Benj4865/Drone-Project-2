@@ -112,6 +112,7 @@ def select_route_expanding_square(search_legs, target_pos, drone):
 
     modified_search_legs = []
 
+
     for leg in search_legs:
         modified_search_leg = intersect_Calculator.calc_intersec(Launch_Parameters.beach_plygon, leg)
         modified_search_legs.append(modified_search_leg)
@@ -378,9 +379,9 @@ def SectorSearch(datum, drift_direction):
         # After the first search, a new datum could be calculated and used to move the search pattern in the drift direction.
         # We Chose not to implement it, due to both low drift speeds along coastlines and lack of time.
 
-    flight_path.insert(0, drone.drone_base)
-    flight_path.insert(1, datum)
-    flight_path.append(drone.drone_base)
+    #flight_path.insert(0, drone.drone_base)
+    flight_path.insert(0, datum)
+    #flight_path.append(drone.drone_base)
 
     return flight_path
 
@@ -490,20 +491,21 @@ max_dev_dist = 50
 
 person_pos = Launch_Parameters.last_known_position
 
-for sim_id in range(1000):
+for sim_id in range(1):
     # generating a new last_known_position for use in next set of simulations
     while True and not single_run:
-        rand_pos = (random.uniform(55.591317, 55.607440), random.uniform(12.373881, 12.400545))
-
+        #rand_pos = (random.uniform(55.591317, 55.607440), random.uniform(12.373881, 12.400545))
+        #rand_pos = (55.604375,12.391564)
+        rand_pos = (55.599743, 12.391125)
         # checks if rand_pos is on beach, and if not, saves position for use in simulation
         if not intersect_Calculator.calc_point_in_poly(Launch_Parameters.beach_plygon, rand_pos):
             Launch_Parameters.last_known_position = rand_pos
             break
 
     while True:
-        deviation_dir = random.randrange(0,max_dev_dir)
-        Launch_Parameters.estimated_drift_bearing = deviation_dir
-        deviation_dist = random.randrange(0, max_dev_dist)
+        deviation_dir = Launch_Parameters.estimated_drift_bearing
+
+        deviation_dist = 0
 
 
         person_pos = Calc_pos(Launch_Parameters.last_known_position, deviation_dir, deviation_dist)
@@ -514,11 +516,11 @@ for sim_id in range(1000):
 
 
 
-    Launch_Parameters.time_since_contact = random.randrange(0, 600)
+    Launch_Parameters.time_since_contact = 0
 
     #drift_data = find_drift_for_location(person_pos) #Remove comment to run with AP calls
     #drift_data = (random.randrange(0,360), random.random())
-    drift_data = (Launch_Parameters.estimated_drift_bearing, random.random()*5)
+    drift_data = (Launch_Parameters.estimated_drift_bearing, random.random())
     drift_pattern = create_drift_pattern(drift_data, person_pos)
 
     # Target_pos is the Search Datum the first time it runs.
