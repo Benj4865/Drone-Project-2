@@ -110,13 +110,17 @@ def Expanding_Square_pattern(datum):
 
 def select_route_expanding_square(search_legs, target_pos, drone):
 
+    # Used to keep track of which search legs have already been modified
     modified_search_legs = []
 
+    # Testing intersections for all legs in pattern
     for leg in search_legs:
         modified_search_leg = intersect_Calculator.calc_intersec(Launch_Parameters.beach_plygon, leg)
         modified_search_legs.append(modified_search_leg)
 
+    # Track unprocessed search legs
     unprocessed_indexes = []
+
 
     for i in range(len(modified_search_legs)):
         if modified_search_legs[i].is_active == True:
@@ -137,9 +141,11 @@ def select_route_expanding_square(search_legs, target_pos, drone):
         if current_leg_index < len(modified_search_legs):
             current_leg = modified_search_legs[current_leg_index]
         else:
-            # break out of generation and later append path home
+            # break out of generation
             break
 
+        # Is used to determine what position from the seach leg that should be appended to the flight_path
+        # This only applies to legs that have no intersection
         if current_leg.is_active and current_leg.intersect_point == None:
             if path_direction == 1:
                 flight_path.append(current_leg.end_pos)
@@ -149,6 +155,7 @@ def select_route_expanding_square(search_legs, target_pos, drone):
             unprocessed_indexes.remove(current_leg_index)
             current_leg_index += path_direction
 
+        # Checks If the leg is active and have an intersection with the beach
         elif current_leg.is_active and current_leg.intersect_point is not None:
 
             flight_path.append(current_leg.intersect_point)
