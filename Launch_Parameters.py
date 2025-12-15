@@ -11,7 +11,7 @@ drone_cruise_speed = 10
 last_known_position = (55.602544, 12.386719)
 time_since_contact = 0
 estimated_drift_velocity = 1
-estimated_drift_bearing = 275
+estimated_drift_bearing = 55
 
 
 # Paramerters used for generating patterns
