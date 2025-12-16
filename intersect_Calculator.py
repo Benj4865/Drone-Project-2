@@ -40,7 +40,7 @@ def calc_intersec(beach_polygon, leg):
     inter = beach.intersection(line)
 
     if inter.is_empty:
-        print("No intersection")
+        pass
 
     else:
 
@@ -68,7 +68,6 @@ def calc_intersect_from_pos(pos_1, pos_2, polygon):
     inter = beach.intersection(line)
 
     if inter.is_empty:
-        print("No intersection")
         return None
     else:
 

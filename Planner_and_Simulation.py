@@ -482,7 +482,7 @@ def simulation(drone, flight_path, drift_pattern ):
         flight_time_home = dist_home/Launch_Parameters.drone_cruise_speed
         wh_home = (flight_time_home/3600) * drone.discharge_rate
 
-        if drone.battery_Wh_left - wh_home <= 10:
+        if drone.battery_Wh_left - wh_home <= (drone.battery_full_capacity / 10):
             search_pattern_step = len(flight_path) - 1
 
         drone.position = drone_new_pos
@@ -509,12 +509,14 @@ max_dev_dist = 50
 
 person_pos = Launch_Parameters.last_known_position
 
-for sim_id in range(100):
+for sim_id in range(400):
+
+    print("SimID: " + str(sim_id))
+
     # generating a new last_known_position for use in next set of simulations
     while True and not single_run:
-        #rand_pos = (random.uniform(55.591317, 55.607440), random.uniform(12.373881, 12.400545))
-        rand_pos = (random.uniform(55.587897 ,55.598510), random.uniform(12.375741, 12.419301))
 
+        rand_pos = (random.uniform(55.587897 ,55.598510), random.uniform(12.375741, 12.419301))
 
         # checks if rand_pos is on beach, and if not, saves position for use in simulation
         if not intersect_Calculator.calc_point_in_poly(Launch_Parameters.beach_plygon, rand_pos):
@@ -534,9 +536,9 @@ for sim_id in range(100):
 
     Launch_Parameters.time_since_contact = random.randrange(0, 600)
 
-    #drift_data = find_drift_for_location(person_pos) #Remove comment to run with AP calls
-    #drift_data = (random.randrange(0,360), random.random())
-    drift_data = (Launch_Parameters.estimated_drift_bearing, random.random())
+    #drift_data = find_drift_for_location(person_pos) #Remove comment to run with API calls
+    drift_data = (random.randrange(0,360), random.random())
+    #drift_data = (Launch_Parameters.estimated_drift_bearing, random.random())
     drift_pattern = create_drift_pattern(drift_data, person_pos)
 
     # Target_pos is the Search Datum the first time it runs.

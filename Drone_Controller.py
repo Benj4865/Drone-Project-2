@@ -8,6 +8,7 @@ class Drone_Controller:
     altitude = 0
     position = (0,0)
     flight_time = 0
+    battery_full_capacity = 100
     battery_Wh_left = 100 # in watt hours
     discharge_rate = 200 #in watt
     distance_flown = 0
