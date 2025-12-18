@@ -1,3 +1,4 @@
+# This function exports a flight path as a KML fil
 import search_leg
 
 def save_kml(input, filename="path.kml", name="Path"):

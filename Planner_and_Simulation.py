@@ -500,7 +500,6 @@ with open('data.csv', 'w', newline='') as csvfile:
                           "Estimated Position Lon", "Actual Position Lat", "Actual Position Lon",
                           "Deviation Direction", "Deviation Distance", "Drift Direction", "Drift Speed", "Time Since Contact", "Distance To Shore"]
                          )
-single_run = False
 
 # Default = 360
 max_dev_dir = 360
@@ -514,7 +513,7 @@ for sim_id in range(400):
     print("SimID: " + str(sim_id))
 
     # generating a new last_known_position for use in next set of simulations
-    while True and not single_run:
+    while True:
 
         rand_pos = (random.uniform(55.587897 ,55.598510), random.uniform(12.375741, 12.419301))
 
